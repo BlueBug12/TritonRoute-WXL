@@ -2115,8 +2115,22 @@ void FlexDR::end() {
       }
     }
   }
+  int totalNets = 0;
+  int routedNets = 0;
+  for (auto &net: getDesign()->getTopBlock()->getNets()) {
+    if (net->getType() != frNetEnum::frcNormalNet && net->getType() != frNetEnum::frcClockNet) {
+      continue;
+    }
+    ++totalNets;
+    if (!net->getShapes().empty() || !net->getVias().empty()) {
+      ++routedNets;
+    }
+  }
   if (VERBOSE > 0) {
     boost::io::ios_all_saver guard(std::cout);
+    if (totalNets - routedNets > 0) {
+      cout <<endl <<"Warning: " <<totalNets - routedNets <<" / " <<totalNets <<" nets are unrouted" <<endl;
+    }
     cout <<endl <<"total wire length = " <<totWlen / getDesign()->getTopBlock()->getDBUPerUU() <<" um" <<endl;
     for (int i = getTech()->getBottomLayerNum(); i <= getTech()->getTopLayerNum(); i++) {
       if (getTech()->getLayer(i)->getType() == frLayerTypeEnum::ROUTING) {

@@ -1534,40 +1534,38 @@ void FlexDRWorker::initNet_termGenAp_new(drPin* dPin) {
               }
               
             } else {
-              bool didUseCenterline = false;
               frCoord manuGrid = getDesign()->getTech()->getManufacturingGrid();
-              auto centerX = (instPinRectBBox.left() + instPinRectBBox.right()) / 2 / manuGrid * manuGrid;
-              if (centerX >= xl(routeRect) && centerX < xh(routeRect)) {
-                xLocs.insert(centerX);
-                didUseCenterline = true;
-              }
-              if (!didUseCenterline) {
-                getTrackLocs(false, currLayerNum, xl(pinRect), xh(pinRect), xLocs);
-              }
-              if (didUseCenterline) {
+              if (currPrefRouteDir == frcHorzPrefRoutingDir) {
+                auto centerY = (instPinRectBBox.top() + instPinRectBBox.bottom()) / 2 / manuGrid * manuGrid;
+                if (centerY >= yl(routeRect) && centerY < yh(routeRect)) {
+                  yLocs.insert(centerY);
+                }
+                if (yLocs.empty()) {
+                  getTrackLocs(true, currLayerNum, yl(pinRect), yh(pinRect), yLocs);
+                }
                 if (currLayerNum + 2 <= getDesign()->getTech()->getTopLayerNum()) {
-                  getTrackLocs(false, currLayerNum + 2, yl(pinRect), yh(pinRect), yLocs);
+                  getTrackLocs(false, currLayerNum + 2, xl(pinRect), xh(pinRect), xLocs);
                 } else if (currLayerNum - 2 >= getDesign()->getTech()->getBottomLayerNum()) {
-                  getTrackLocs(false, currLayerNum - 2, yl(pinRect), yh(pinRect), yLocs);
+                  getTrackLocs(false, currLayerNum - 2, xl(pinRect), xh(pinRect), xLocs);
                 } else {
-                  getTrackLocs(false, currLayerNum, yl(pinRect), yh(pinRect), yLocs);
+                  getTrackLocs(false, currLayerNum, xl(pinRect), xh(pinRect), xLocs);
                 }
               } else {
-                frCoord lowerBoundY = yl(pinRect);
-                frCoord upperBoundY = yh(pinRect);
-                if ((upperBoundY - lowerBoundY) >= 2 * layerWidth) {
-                  lowerBoundY += layerWidth;
-                  upperBoundY -= layerWidth;
-                  if (currLayerNum + 2 <= getDesign()->getTech()->getTopLayerNum()) {
-                    getTrackLocs(false, currLayerNum + 2, lowerBoundY, upperBoundY, yLocs);
-                  } else if (currLayerNum - 2 >= getDesign()->getTech()->getBottomLayerNum()) {
-                    getTrackLocs(false, currLayerNum - 2, lowerBoundY, upperBoundY, yLocs);
-                  } else {
-                    getTrackLocs(false, currLayerNum, lowerBoundY, upperBoundY, yLocs);
-                  }
+                auto centerX = (instPinRectBBox.left() + instPinRectBBox.right()) / 2 / manuGrid * manuGrid;
+                if (centerX >= xl(routeRect) && centerX < xh(routeRect)) {
+                  xLocs.insert(centerX);
+                }
+                if (xLocs.empty()) {
+                  getTrackLocs(false, currLayerNum, xl(pinRect), xh(pinRect), xLocs);
+                }
+                if (currLayerNum - 2 >= getDesign()->getTech()->getBottomLayerNum()) {
+                  getTrackLocs(true, currLayerNum - 2, yl(pinRect), yh(pinRect), yLocs);
+                } else if (currLayerNum + 2 <= getDesign()->getTech()->getTopLayerNum()) {
+                  getTrackLocs(true, currLayerNum + 2, yl(pinRect), yh(pinRect), yLocs);
+                } else {
+                  getTrackLocs(true, currLayerNum, yl(pinRect), yh(pinRect), yLocs);
                 }
               }
-              
             }
           }
 
@@ -1590,17 +1588,17 @@ void FlexDRWorker::initNet_termGenAp_new(drPin* dPin) {
                   auto reqArea = minAreaConstraint->getMinArea();
                   uap->setBeginArea(reqArea);
                 }
-                // io pin pref direction setting
-                // Point pinCenter;
-                // center(pinCenter, pinRect);
                 vector<bool> validAccess(6, false);
-                if (isPinRectHorz) {
-                    validAccess[0] = true;
-                    validAccess[2] = true;
+                bool isLayerHorz = (getTech()->getLayer(currLayerNum)->getDir() == frcHorzPrefRoutingDir);
+                if (isLayerHorz) {
+                    validAccess[0] = true; // E
+                    validAccess[2] = true; // W
                 } else {
-                    validAccess[3] = true;
-                    validAccess[1] = true;
+                    validAccess[3] = true; // N
+                    validAccess[1] = true; // S
                 }
+                validAccess[4] = true; // U
+                validAccess[5] = true; // D
                 uap->setValidAccess(validAccess);
                 uap->setPin(dPin);
                 if (!isInitDR() || xLoc != xh(routeRect) || yLoc != yh(routeRect)) {
@@ -2595,14 +2593,14 @@ void FlexDRWorker::initTrackCoords_pin(drNet* net,
       //  }
       //}
       if (getTech()->getLayer(lNum)->getDir() == frcHorzPrefRoutingDir) {
-        yMap[pt.y()][lNum] = nullptr;
+        yMap[pt.y()].insert({lNum, nullptr});
       } else {
-        xMap[pt.x()][lNum] = nullptr;
+        xMap[pt.x()].insert({lNum, nullptr});
       }
       if (getTech()->getLayer(lNum2)->getDir() == frcHorzPrefRoutingDir) {
-        yMap[pt.y()][lNum2] = nullptr;
+        yMap[pt.y()].insert({lNum2, nullptr});
       } else {
-        xMap[pt.x()][lNum2] = nullptr;
+        xMap[pt.x()].insert({lNum2, nullptr});
       }
     }
   }
